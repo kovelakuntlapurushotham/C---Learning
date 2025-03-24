@@ -1,12 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using UserManagement.Data;
+using UserManagement.Filters;
 using UserManagement.Helpers;
+using UserManagement.Repositories;
+using UserManagement.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ApiResponseFilter>();
+})
                .AddJsonOptions(options =>
                {
                    // Preserve original property names during JSON serialization/deserialization.
@@ -16,6 +22,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 //this line is required for autoMapper
 builder.Services.AddAutoMapper(typeof(AutoMapperProfiles).Assembly);
+builder.Services.AddTransient<IUserManagementService, UserManagementService>();
 builder.Services.AddDbContext<UserManagementContext>(x => x.UseSqlServer(builder.Configuration.GetConnectionString("UserManagementConnection")));
 var app = builder.Build();
 
