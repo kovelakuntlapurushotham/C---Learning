@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using UserManagement.DTOs;
@@ -11,26 +12,34 @@ namespace UserManagement.Controllers
     [ApiController]
     public class UserManagementController : ControllerBase
     {
-        private readonly IUserManagementService service;
+        private readonly IUserManagementService _service;
 
         public UserManagementController(IUserManagementService service)
         {
 
-            this.service = service;
+            this._service = service;
         }
 
-        [HttpPost]
+        [HttpPost("login")]
 
         public async Task<ApiResponse<LoginResponseDto>> ValidateUser([FromQuery] LoginRequestDto loginRequest)
         {
-            return await service.Login(loginRequest);
+            return await _service.Login(loginRequest);
         }
 
         [HttpGet("greet")]
 
         public string SendMessage(string message)
         {
-            return service.test(message);
+            return _service.test(message);
+        }
+
+        [HttpGet("getUsers")]
+        [Authorize]
+
+        public async Task<ApiResponse<List<UserDto>>> GetUser()
+        {
+            return await _service.GetUsers();
         }
     }
 }

@@ -8,5 +8,7 @@ namespace UserManagement.Repositories
         Task<ApiResponse<LoginResponseDto>> Login(LoginRequestDto loginRequestDto);
 
         string test(string message);
+
+        Task<ApiResponse<List<UserDto>>> GetUsers();
     }
 }
