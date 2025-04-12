@@ -13,17 +13,19 @@ namespace UserManagement.Controllers
     public class UserManagementController : ControllerBase
     {
         private readonly IUserManagementService _service;
+        private readonly ILogger<UserManagementController> _logger;
 
-        public UserManagementController(IUserManagementService service)
+        public UserManagementController(IUserManagementService service, ILogger<UserManagementController> logger)
         {
-
-            this._service = service;
+            _service = service;
+            _logger = logger;
         }
 
         [HttpPost("login")]
 
         public async Task<ApiResponse<LoginResponseDto>> ValidateUser([FromQuery] LoginRequestDto loginRequest)
         {
+            _logger.LogInformation("From Controller UserManagement");
             return await _service.Login(loginRequest);
         }
 

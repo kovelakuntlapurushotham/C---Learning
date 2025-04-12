@@ -1,6 +1,7 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
 using System.Text;
 using UserManagement.Configurations;
 using UserManagement.Data;
@@ -11,55 +12,68 @@ using UserManagement.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.Configure<JwtConfiguration>(builder.Configuration.GetSection(nameof(JwtConfiguration)));
-// Add services to the container.
+// 🔹 Logging (Serilog)
+builder.Host.UseSerilog((context, configuration) =>
+    configuration.ReadFrom.Configuration(context.Configuration));
 
+// 🔹 Configuration Binding
+builder.Services.Configure<JwtConfiguration>(builder.Configuration.GetSection(nameof(JwtConfiguration)));
+
+// 🔹 Add Core Services
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddAutoMapper(typeof(AutoMapperProfiles).Assembly);
+
+// 🔹 Add Custom Services
+builder.Services.AddTransient<IJwtTokenGenerator, JwtTokenService>();
+builder.Services.AddTransient<IUserManagementService, UserManagementService>();
+
+// 🔹 Add Database Context
+builder.Services.AddDbContext<UserManagementContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("UserManagementConnection")));
+
+// 🔹 Add Controllers + Filters + JSON Options
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ApiResponseFilter>();
-}).AddJsonOptions(options =>
+})
+.AddJsonOptions(options =>
 {
-    // Preserve original property names during JSON serialization/deserialization.
-    options.JsonSerializerOptions.PropertyNamingPolicy = null;
-});// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+    options.JsonSerializerOptions.PropertyNamingPolicy = null; 
+});
 
+// 🔹 Swagger / API Explorer
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-//this line is required for autoMapper
-builder.Services.AddAutoMapper(typeof(AutoMapperProfiles).Assembly);
-builder.Services.AddTransient<IJwtTokenGenerator, JwtTokenService>();
 
-builder.Services.AddTransient<IUserManagementService, UserManagementService>();
+// 🔹 JWT Authentication
+var jwtConfig = builder.Configuration.GetSection(nameof(JwtConfiguration));
+var secretKey = jwtConfig.GetValue<string>("SecretKey");
+var issuer = jwtConfig.GetValue<string>("Issuer");
+var audience = jwtConfig.GetValue<string>("Audience");
+var key = Encoding.ASCII.GetBytes(secretKey);
 
-builder.Services.AddDbContext<UserManagementContext>(x => x.UseSqlServer(builder.Configuration.GetConnectionString("UserManagementConnection")));
-var section = builder.Configuration.GetSection(nameof(JwtConfiguration));
-var secret = section.GetValue<string>("SecretKey");
-var issuer = section.GetValue<string>("Issuer");
-var audience = section.GetValue<string>("Audience");
-var key = Encoding.ASCII.GetBytes(secret);
-builder.Services.AddAuthentication(x =>
+builder.Services.AddAuthentication(options =>
 {
-    x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
-               // services.AddAuthentication("Bearer")
-               .AddJwtBearer(opt => {
-                   opt.IncludeErrorDetails = true;
-                   opt.TokenValidationParameters = new TokenValidationParameters
-                   {
-                       ValidateIssuerSigningKey = true,
-                       ValidateIssuer = false,
-                       IssuerSigningKey = new SymmetricSecurityKey(key),
-                       ValidateAudience = false,
-                       ValidAudience = audience,
-
-                   };
-               });
-
+.AddJwtBearer(options =>
+{
+    options.IncludeErrorDetails = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = false, // You can change to true if you validate issuer
+        ValidateAudience = false, // Same for audience
+        ValidAudience = audience,
+        ValidIssuer = issuer
+    };
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// 🔹 Middleware Pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -68,8 +82,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseSerilogRequestLogging();
 
-
+app.UseAuthentication(); // ⬅️ Make sure authentication comes before authorization
 app.UseAuthorization();
 
 app.MapControllers();

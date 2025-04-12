@@ -13,12 +13,14 @@ namespace UserManagement.Services
         private readonly UserManagementContext _db;
         private readonly IMapper _mapper;
         private readonly IJwtTokenGenerator _jwtTokenService;
+        private readonly ILogger<UserManagementService> _logger;
 
-        public UserManagementService(UserManagementContext db, IMapper mapper, IJwtTokenGenerator jwtTokenService)
+        public UserManagementService(UserManagementContext db, IMapper mapper, IJwtTokenGenerator jwtTokenService, ILogger<UserManagementService> logger)
         {
             _db = db;
             _mapper = mapper;
             _jwtTokenService = jwtTokenService;
+            _logger = logger;
         }
 
         public async Task<ApiResponse<List<UserDto>>> GetUsers()
@@ -38,7 +40,6 @@ namespace UserManagement.Services
         public async Task<ApiResponse<LoginResponseDto>> Login(LoginRequestDto loginRequestDto)
         {
             var isUserExits =  await _db.Users.FirstOrDefaultAsync(user => user.Name.ToLower() == loginRequestDto.UserName.ToLower());
-           
             if (isUserExits == null)
             {
                 return new ApiResponse<LoginResponseDto>(false, "User Not Found", 404, new LoginResponseDto());
@@ -47,6 +48,7 @@ namespace UserManagement.Services
             {
                 return new ApiResponse<LoginResponseDto>(false, "Password invalid", 404, new LoginResponseDto());
             }
+            _logger.LogInformation("User Found");
 
             var loginDto = new LoginResponseDto()
             {
@@ -54,6 +56,8 @@ namespace UserManagement.Services
                 User = _mapper.Map<UserDto>(isUserExits),
 
             };
+            _logger.LogInformation("Jwt Token is generated");
+
 
             return new ApiResponse<LoginResponseDto>(true, "Login Successful", 200, loginDto);
         }
