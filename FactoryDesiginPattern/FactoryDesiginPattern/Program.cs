@@ -2,6 +2,8 @@
 
 NotificationFactory emailFactory = new EmailNotificationFactory();
 emailFactory.Notify("This is an email notification.");
+INotification notification = new EmailNotification();
+notification.Send("tj");
 
 NotificationFactory smsFactory = new SMSNotificationFactory();
 smsFactory.Notify("This is an SMS notification.");

@@ -11,6 +11,6 @@ namespace UserManagement.Helpers
             .ForMember(d => d.UserId, opt => opt.MapFrom(src => src.Id));
         }
 
-
+         
     }
 }

@@ -35,6 +35,7 @@ builder.Services.AddDbContext<UserManagementContext>(options =>
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ApiResponseFilter>();
+    options.Filters.Add<ExceptionFilter>(); // Custom exception filter
 })
 .AddJsonOptions(options =>
 {
